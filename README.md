@@ -9,8 +9,8 @@ The application combines **document processing, embeddings, PostgreSQL + pgvecto
 ## Project Links
 
 * **GitHub:** https://github.com/brahimazreg/rag-document-intelligence
-* **Live API:** Add your Render URL after deployment
-* **API Documentation:** Add your Render `/docs` URL after deployment
+* **Live API:** https://rag-document-intelligence-thz7.onrender.com 
+* **API Documentation:** https://rag-document-intelligence-thz7.onrender.com/docs
 
 ---
 
