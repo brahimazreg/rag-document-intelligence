@@ -32,7 +32,8 @@ TOP_K_RESULT = 5
 # LLM configuration
 # =========================
 
-LLM_MODEL_NAME = "models/gemini-flash-latest"
+LLM_MODEL_NAME = "models/gemini-3.5-flash-lite"
+
 EMBEDDING_MODEL_NAME = "gemini-embedding-001"
 
 # =========================

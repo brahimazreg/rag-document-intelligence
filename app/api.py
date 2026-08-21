@@ -2,8 +2,12 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from app.rag.chain import RAGChain
+from app.vectorstore.vector_store import VectorStore
 
 app = FastAPI()
+
+vector_store = VectorStore()
+vector_store.create_tables()
 
 rag = RAGChain()
 
@@ -22,7 +26,8 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/document")
-def get_info(request: QuestionRequest):
+
+@app.post("/query")
+def query(request: QuestionRequest):
     response = rag.answer(request.query, limit=3)
     return {"answer": response}

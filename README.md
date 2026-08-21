@@ -1,113 +1,127 @@
 # RAG Document Intelligence
 
-A production-oriented **Retrieval-Augmented Generation (RAG)** API that allows users to ask questions about indexed documents.
+A production-oriented **Retrieval-Augmented Generation (RAG) backend** that allows users to ask questions about indexed documents.
 
-The application combines **document embeddings**, **PostgreSQL + pgvector**, **vector similarity search**, **FastAPI**, and **Google Gemini** to retrieve relevant document chunks and generate grounded answers.
+The application combines **document processing, embeddings, PostgreSQL + pgvector, semantic vector search, FastAPI, LangChain, and Google Gemini** to retrieve relevant document chunks and generate answers grounded in the indexed documents.
 
 ---
 
 ## Project Links
 
-- **GitHub:** https://github.com/brahimazreg/rag-document-intelligence
-- **Live API:** https://your-service.onrender.com
-- **API Documentation:** https://your-service.onrender.com/docs
+* **GitHub:** https://github.com/brahimazreg/rag-document-intelligence
+* **Live API:** Add your Render URL after deployment
+* **API Documentation:** Add your Render `/docs` URL after deployment
+
+---
 
 ## Overview
 
 Large Language Models (LLMs) do not automatically have access to an organization's private documents.
 
-This project implements a RAG pipeline that:
+This project implements a complete RAG pipeline that:
 
-1. Loads documents.
-2. Splits documents into chunks.
-3. Generates embeddings for the chunks.
-4. Stores the chunks and embeddings in PostgreSQL using pgvector.
-5. Converts a user's question into an embedding.
-6. Retrieves the most relevant document chunks.
-7. Adds the retrieved chunks to the LLM prompt.
-8. Generates an answer using the retrieved context.
+1. Loads PDF and text documents.
+2. Splits documents into smaller chunks.
+3. Generates embeddings for each chunk.
+4. Stores chunks and embeddings in PostgreSQL using pgvector.
+5. Converts user questions into embeddings.
+6. Performs vector similarity search.
+7. Retrieves the most relevant document chunks.
+8. Builds a context from the retrieved chunks.
+9. Sends the context and question to Google Gemini.
+10. Generates an answer based only on the retrieved context.
 
-The system is designed to reduce unsupported answers by instructing the LLM to answer only from the retrieved documents.
+The goal is to reduce unsupported answers by grounding the LLM response in information retrieved from the indexed documents.
 
 ---
 
 ## Architecture
 
 ```text
-                    DOCUMENT INGESTION
-                           │
-                           ▼
-                    Documents (PDF/TXT)
-                           │
-                           ▼
-                       Chunking
-                           │
-                           ▼
-                  Embedding Model
-                  embed_documents()
-                           │
-                           ▼
-              PostgreSQL + pgvector
-                           │
-                           │
-                           │
-                           ▼
-                    USER QUESTION
-                           │
-                           ▼
-                        FastAPI
-                           │
-                           ▼
-                       RAGChain
-                           │
-                           ▼
-                       Retriever
-                           │
-                           ▼
-                    embed_query()
-                           │
-                           ▼
-              PostgreSQL + pgvector
-                           │
-                           ▼
-                Relevant document chunks
-                           │
-                           ▼
-                     Context
-                           │
-                           ▼
-                   Prompt construction
-                           │
-                           ▼
-                     Google Gemini
-                           │
-                           ▼
-                    Generated Answer
+                         DOCUMENT INGESTION
+                                │
+                                ▼
+                       PDF / TXT Documents
+                                │
+                                ▼
+                         Document Loading
+                                │
+                                ▼
+                            Chunking
+                                │
+                                ▼
+                       Embedding Generation
+                                │
+                                ▼
+                     PostgreSQL + pgvector
+                                │
+                                │
+                                ▼
+                         USER QUESTION
+                                │
+                                ▼
+                             FastAPI
+                                │
+                                ▼
+                           RAGChain
+                                │
+                                ▼
+                           Retriever
+                                │
+                                ▼
+                         Query Embedding
+                                │
+                                ▼
+                     PostgreSQL + pgvector
+                                │
+                                ▼
+                    Relevant Document Chunks
+                                │
+                                ▼
+                         Context Builder
+                                │
+                                ▼
+                        Prompt Construction
+                                │
+                                ▼
+                         Google Gemini
+                                │
+                                ▼
+                         Generated Answer
 ```
 
 ---
 
 ## RAG Pipeline
 
-The core retrieval flow is:
+The core retrieval and generation flow is:
 
 ```text
 User Question
-      ↓
+      │
+      ▼
 Query Embedding
-      ↓
+      │
+      ▼
 Vector Similarity Search
-      ↓
+      │
+      ▼
 Top-K Relevant Chunks
-      ↓
+      │
+      ▼
 Context Construction
-      ↓
+      │
+      ▼
 LLM Prompt
-      ↓
+      │
+      ▼
+Google Gemini
+      │
+      ▼
 Generated Answer
 ```
 
-For example:
+### Example
 
 ```text
 Question:
@@ -115,11 +129,7 @@ Question:
 
         ↓
 
-Embedding Model
-
-        ↓
-
-Query Vector
+Query embedding
 
         ↓
 
@@ -131,12 +141,20 @@ Relevant document chunks
 
         ↓
 
-Gemini
+Context construction
 
         ↓
 
-Answer based on retrieved context
+Google Gemini
+
+        ↓
+
+Answer grounded in the retrieved documents
 ```
+
+The retrieval layer has been tested successfully and returns relevant document chunks from PostgreSQL.
+
+The complete RAG chain has also been tested successfully with Gemini.
 
 ---
 
@@ -152,25 +170,30 @@ Answer based on retrieved context
 ### AI / LLM
 
 * Google Gemini
-* LangChain integration
+* LangChain
+* `langchain-google-genai`
 * Embedding model
 
 ### Vector Storage
 
 * PostgreSQL
 * pgvector
+* Psycopg
 
 ### Document Processing
 
 * PDF documents
 * TXT documents
 * Document chunking
+* Metadata extraction
 * Embedding generation
 
-### Deployment
+### Development / Deployment
 
-* Render
+* `uv`
+* Docker
 * GitHub
+* Render
 
 ---
 
@@ -183,31 +206,82 @@ rag-document-intelligence/
 │   ├── __init__.py
 │   │
 │   ├── api.py
+│   ├── config.py
 │   │
-│   └── rag/
+│   ├── database/
+│   │   ├── __init__.py
+│   │   └── connection.py
+│   │
+│   ├── ingestion/
+│   │   ├── __init__.py
+│   │   ├── embedding.py
+│   │   ├── load_data.py
+│   │   ├── pipeline.py
+│   │   └── splitter.py
+│   │
+│   ├── rag/
+│   │   ├── __init__.py
+│   │   └── chain.py
+│   │
+│   ├── retrieval/
+│   │   ├── __init__.py
+│   │   └── retriever.py
+│   │
+│   └── vectorstore/
 │       ├── __init__.py
-│       ├── chain.py
-│       ├── retriever.py
-│       ├── vector_store.py
-│       ├── embedding.py
-│       └── ...
+│       └── vector_store.py
+│
+├── scripts/
+│   ├── __init__.py
+│   └── ingest.py
 │
 ├── data/
 │   └── raw/
 │       ├── pdf/
 │       └── txt/
 │
-├── README.md
-├── requirements.txt
+├── .env
 ├── .gitignore
-└── ...
+├── README.md
+├── pyproject.toml
+└── uv.lock
 ```
+
+> `.env`, `.venv`, Python cache files, and other local/generated files should not be committed to GitHub.
 
 ---
 
 ## Main Components
 
-### 1. Embedding Model
+### 1. Document Ingestion
+
+The ingestion pipeline is responsible for loading, splitting, embedding, and storing documents.
+
+The main flow is:
+
+```text
+Documents
+    ↓
+load_documents()
+    ↓
+split_documents()
+    ↓
+embed_documents()
+    ↓
+PostgreSQL + pgvector
+```
+
+The ingestion script can be executed with:
+
+```powershell
+uv run python -m scripts.ingest
+```
+
+A successful ingestion reports the number of processed chunks.
+
+---
+
+### 2. Embedding Model
 
 The embedding model converts text into numerical vectors.
 
@@ -217,7 +291,7 @@ During document ingestion:
 embed_documents(chunks)
 ```
 
-is used to create embeddings for document chunks.
+generates embeddings for document chunks.
 
 During retrieval:
 
@@ -225,124 +299,130 @@ During retrieval:
 embed_query(query)
 ```
 
-is used to create an embedding for the user's question.
+generates an embedding for the user's question.
 
 Conceptually:
 
 ```text
-Document chunk
+Document Chunk
       ↓
-Embedding
+Embedding Model
       ↓
-Vector
+Document Vector
 
-User question
+
+User Question
       ↓
-Embedding
+Embedding Model
       ↓
-Query vector
+Query Vector
 ```
+
+The document and query vectors can then be compared using vector similarity.
 
 ---
 
-### 2. VectorStore
+### 3. VectorStore
 
 The `VectorStore` class handles interaction with PostgreSQL and pgvector.
 
 Its responsibilities include:
 
-* Creating database tables.
+* Creating the vector database table.
 * Storing document chunks.
+* Storing document metadata.
 * Storing embeddings.
-* Searching for similar vectors.
+* Performing vector similarity searches.
 
-The search operation uses pgvector's vector distance operators to find the closest document chunks to a query embedding.
-
-Conceptually:
+The database table currently used by the application is:
 
 ```text
-Query Vector
-     │
-     ├───────────────┐
-     │               │
-     ▼               ▼
-Document Vector  Document Vector
-     │               │
-     └──── similarity ────┘
-             │
-             ▼
-       Ranked results
+document_chunks
 ```
+
+with the following main fields:
+
+```text
+id
+content
+metadata
+embedding
+```
+
+The embedding column stores the numerical representation of each document chunk.
 
 ---
 
-### 3. Retriever
+### 4. Retriever
 
 The `Retriever` coordinates query embedding and vector search.
 
-Its main responsibility is:
+Its flow is:
 
 ```text
 Question
-   ↓
+    ↓
 embed_query()
-   ↓
-query embedding
-   ↓
+    ↓
+Query Vector
+    ↓
 VectorStore.search()
-   ↓
-relevant chunks
+    ↓
+Top-K Relevant Chunks
 ```
 
-The Retriever does not generate the final answer.
+The Retriever is responsible for **finding relevant information**.
 
-It only finds the information that can be used to answer the question.
+It does not generate the final answer.
 
 ---
 
-### 4. RAGChain
+### 5. RAGChain
 
-`RAGChain` connects the Retriever with the LLM.
+`RAGChain` connects retrieval with the LLM.
 
 Its responsibilities are:
 
-1. Retrieve relevant document chunks.
-2. Build the context.
-3. Construct the prompt.
-4. Send the prompt to Gemini.
-5. Return the generated answer.
+1. Receive the user's question.
+2. Retrieve relevant document chunks.
+3. Build the context.
+4. Construct the prompt.
+5. Send the prompt to Google Gemini.
+6. Return the generated answer.
 
 The simplified flow is:
 
 ```text
 Question
-   ↓
+    ↓
 Retriever
-   ↓
-Relevant chunks
-   ↓
+    ↓
+Relevant Chunks
+    ↓
 Context
-   ↓
+    ↓
 Prompt
-   ↓
+    ↓
 Gemini
-   ↓
+    ↓
 Answer
 ```
 
+The prompt explicitly instructs the model to use the provided context and to state that there is insufficient information when the answer cannot be found in the retrieved documents.
+
 ---
 
-### 5. FastAPI
+## FastAPI
 
 FastAPI exposes the RAG functionality through an HTTP API.
 
-Available endpoints:
+### Available Endpoints
 
-| Method | Endpoint    | Description                                |
-| ------ | ----------- | ------------------------------------------ |
-| GET    | `/`         | Basic application information              |
-| GET    | `/healthy`  | Health check                               |
-| POST   | `/document` | Ask a question about the indexed documents |
+| Method | Endpoint    | Description                            |
+| ------ | ----------- | -------------------------------------- |
+| GET    | `/`         | Basic application information          |
+| GET    | `/healthy`  | Health check                           |
+| POST   | `/document` | Ask a question about indexed documents |
 
 ---
 
@@ -354,7 +434,7 @@ Available endpoints:
 GET /healthy
 ```
 
-Response:
+Example response:
 
 ```json
 {
@@ -378,11 +458,11 @@ Request:
 }
 ```
 
-Response:
+Example response:
 
 ```json
 {
-  "answer": "Based on the provided context, Retrieval-Augmented Generation (commonly called RAG) combines information retrieval with text generation..."
+  "answer": "Retrieval-Augmented Generation, commonly called RAG, combines information retrieval with text generation..."
 }
 ```
 
@@ -392,26 +472,34 @@ Response:
 
 FastAPI automatically provides interactive API documentation.
 
-When running locally, open:
+When running locally:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-You can use Swagger UI to test the API without needing a separate frontend.
+Swagger UI can be used to test the API without requiring a separate frontend.
 
 ---
 
 ## Installation
 
-Clone the repository:
+### Clone the Repository
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/brahimazreg/rag-document-intelligence.git
 cd rag-document-intelligence
 ```
 
-Create a virtual environment:
+### Create the Virtual Environment
+
+Using `uv`:
+
+```bash
+uv sync
+```
+
+Or using standard Python:
 
 ### Windows
 
@@ -427,7 +515,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Install dependencies:
+Install dependencies if using the standard Python workflow:
 
 ```bash
 pip install -r requirements.txt
@@ -449,7 +537,7 @@ DATABASE_URL=your_postgresql_connection_string
 
 Do **not** commit `.env` to GitHub.
 
-The `.gitignore` should include:
+Recommended `.gitignore` entries:
 
 ```text
 .env
@@ -466,36 +554,72 @@ This project uses PostgreSQL with the **pgvector** extension.
 
 pgvector adds vector storage and similarity search capabilities to PostgreSQL.
 
-The database stores information such as:
+The application stores:
 
 ```text
-id
-content
-metadata
-embedding
+document_chunks
+│
+├── id
+├── content
+├── metadata
+└── embedding
 ```
 
-The embedding column contains the numerical representation of each document chunk.
-
-Example:
+Conceptually:
 
 ```text
-Document chunk
+Document Chunk
       ↓
-Embedding model
+Embedding Model
       ↓
-[0.12, -0.45, 0.78, ...]
+Vector
       ↓
 PostgreSQL + pgvector
 ```
 
-During retrieval, the query embedding is compared against the stored document embeddings.
+During retrieval:
+
+```text
+User Question
+      ↓
+Query Embedding
+      ↓
+Vector Similarity Search
+      ↓
+Relevant Document Chunks
+```
+
+The vector search uses pgvector's distance operator to rank chunks by similarity to the query embedding.
 
 ---
 
 ## Running Locally
 
-Start the FastAPI server:
+### Start PostgreSQL
+
+If PostgreSQL is running through Docker Compose, start the database with:
+
+```bash
+docker compose up -d
+```
+
+Verify the container is running:
+
+```bash
+docker ps
+```
+
+### Ingest Documents
+
+From the project root:
+
+```bash
+uv run python -m scripts.ingest
+```
+
+The ingestion pipeline loads the documents, creates chunks, generates embeddings, and stores them in PostgreSQL.
+
+### Start FastAPI
 
 ```bash
 uvicorn app.api:app --reload
@@ -507,7 +631,7 @@ The API will be available at:
 http://127.0.0.1:8000
 ```
 
-Swagger documentation:
+Swagger:
 
 ```text
 http://127.0.0.1:8000/docs
@@ -515,33 +639,63 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## Example RAG Behavior
+## Testing the RAG Pipeline
 
-### Question with available information
+The retrieval layer can be tested directly:
 
-If the indexed documents contain information about RAG:
-
-```text
-Question:
-What is Retrieval-Augmented Generation?
+```powershell
+uv run python -c "from app.retrieval.retriever import Retriever; r=Retriever(); results=r.retrieve('What is this document about?'); print('RESULTS:', len(results)); [print(x) for x in results]"
 ```
 
-The Retriever finds relevant RAG documents and provides them to the LLM.
+The RAG generation chain can be tested with:
 
-The LLM generates an answer using that context.
+```powershell
+uv run python -c "from app.rag.chain import RAGChain; chain=RAGChain(); print(chain.answer('What is Retrieval-Augmented Generation?'))"
+```
+
+A successful test retrieves relevant chunks and generates an answer using Gemini.
+
+Example:
+
+```text
+Retrieval-Augmented Generation, commonly called RAG,
+combines information retrieval with text generation.
+Instead of relying only on information stored in an LLM's
+parameters, a RAG system first retrieves relevant documents
+or document chunks and then gives that context to a language model.
+```
 
 ---
 
-### Question without available information
+## Example RAG Behavior
 
-If the indexed documents do not contain information about refunds:
+### Question With Available Information
 
 ```text
 Question:
+
+What is Retrieval-Augmented Generation?
+```
+
+The Retriever searches the indexed documents and returns relevant chunks.
+
+Those chunks are then provided to Gemini as context.
+
+The model generates an answer based on that context.
+
+---
+
+### Question Without Available Information
+
+For example:
+
+```text
+Question:
+
 What is the refund policy?
 ```
 
-The system may return:
+If the indexed documents do not contain information about refunds, the system is instructed to return:
 
 ```json
 {
@@ -551,49 +705,13 @@ The system may return:
 
 This behavior is intentional.
 
-The prompt instructs the LLM not to invent an answer when the required information cannot be found in the retrieved context.
-
----
-
-## Design Principles
-
-### Separation of Responsibilities
-
-Each component has a specific responsibility:
-
-```text
-Embedding Model
-    ↓
-Text → Vector
-
-VectorStore
-    ↓
-Store and search vectors
-
-Retriever
-    ↓
-Find relevant document chunks
-
-RAGChain
-    ↓
-Build context and orchestrate retrieval + generation
-
-LLM
-    ↓
-Generate the final answer
-
-FastAPI
-    ↓
-Expose the system through an HTTP API
-```
-
-This separation makes the system easier to test, maintain, and extend.
+The goal is to reduce hallucinations by grounding the answer in retrieved document context.
 
 ---
 
 ## Retrieval vs Generation
 
-An important characteristic of this architecture is the separation between **retrieval quality** and **answer quality**.
+A key characteristic of this architecture is the separation between **retrieval quality** and **generation quality**.
 
 Retrieval asks:
 
@@ -607,41 +725,130 @@ For example:
 
 ```text
 Question
-   ↓
+    ↓
 Retriever
-   ↓
-Wrong chunks
-   ↓
+    ↓
+Wrong Chunks
+    ↓
 LLM
-   ↓
-Poor answer
+    ↓
+Poor Answer
 ```
 
-Even a powerful LLM cannot reliably answer a question using context that does not contain the required information.
+Even a powerful LLM cannot reliably answer a question if the required information was not retrieved.
 
 Therefore, retrieval quality is a critical part of a RAG system.
 
 ---
 
+## Design Principles
+
+### Separation of Responsibilities
+
+Each component has a specific responsibility:
+
+```text
+Document Loader
+      ↓
+Load documents
+
+Splitter
+      ↓
+Create document chunks
+
+Embedding Model
+      ↓
+Text → Vector
+
+VectorStore
+      ↓
+Store and search vectors
+
+Retriever
+      ↓
+Find relevant document chunks
+
+RAGChain
+      ↓
+Build context and orchestrate retrieval + generation
+
+Gemini
+      ↓
+Generate final answer
+
+FastAPI
+      ↓
+Expose the RAG system through HTTP
+```
+
+This separation makes the system easier to test, maintain, and extend.
+
+---
+
+## Current Validation
+
+The core pipeline has been manually validated end-to-end.
+
+### Ingestion
+
+Successfully processed document chunks and stored embeddings in PostgreSQL.
+
+### Vector Retrieval
+
+A test query successfully returned the top 5 relevant document chunks.
+
+### RAG Generation
+
+A test question successfully produced a Gemini-generated answer grounded in the retrieved document context.
+
+Example test:
+
+```text
+Question:
+What is Retrieval-Augmented Generation?
+
+Result:
+RAG combines information retrieval with text generation...
+```
+
+---
+
+## Known Limitations
+
+The current implementation is a **working production-oriented prototype**, rather than a fully production-hardened system.
+
+Current limitations include:
+
+* Re-running ingestion can create duplicate document chunks unless the ingestion strategy is reset/upsert-based.
+* Source citations are not yet included in generated answers.
+* Retrieval evaluation metrics are not yet implemented.
+* Authentication is not currently implemented.
+* Conversation history is not currently implemented.
+* Observability and structured logging are limited.
+* The deployment configuration still requires production hardening.
+
+---
+
 ## Future Improvements
 
-Potential improvements include:
+Potential next improvements include:
 
-* Add a Streamlit or React frontend.
+* Make ingestion idempotent using document IDs/hashes and upserts.
+* Add source and page citations to generated answers.
 * Add document upload through the API.
-* Add authentication and authorization.
 * Add metadata filtering.
 * Improve chunking strategies.
 * Add hybrid keyword + vector search.
 * Add reranking.
 * Add retrieval evaluation metrics.
-* Add automated tests.
+* Add automated unit and integration tests.
 * Add structured logging.
 * Add monitoring and observability.
+* Add authentication and authorization.
 * Add conversation history.
-* Add citation/source references in responses.
-* Improve production database configuration.
+* Add a React or Streamlit frontend.
 * Add CI/CD with GitHub Actions.
+* Improve production database configuration.
 
 ---
 
@@ -655,9 +862,15 @@ Production start command:
 uvicorn app.api:app --host 0.0.0.0 --port $PORT
 ```
 
-Required environment variables should be configured in the Render dashboard rather than committed to the repository.
+Required environment variables should be configured through the Render dashboard rather than committed to the repository.
 
-After deployment, the FastAPI Swagger documentation can be accessed through:
+After deployment:
+
+```text
+https://<your-render-service>.onrender.com
+```
+
+Swagger:
 
 ```text
 https://<your-render-service>.onrender.com/docs
@@ -672,25 +885,30 @@ https://<your-render-service>.onrender.com/docs
 The current implementation demonstrates:
 
 * Document ingestion
+* PDF/TXT processing
 * Text chunking
 * Embedding generation
-* Vector storage
 * PostgreSQL + pgvector
+* Vector storage
 * Semantic retrieval
 * Context construction
 * Gemini LLM generation
+* RAG orchestration
 * FastAPI API
 * Health checks
 * Interactive Swagger documentation
 
+The core pipeline has been tested successfully from document ingestion through retrieval and final LLM generation.
+
 ---
 
-## AUTHOR
+## Author
 
-AZREG BRAHIM
+**AZREG BRAHIM**
 
-```text
+---
+
+## License
+
 MIT License
-```
-
 
