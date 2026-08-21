@@ -19,14 +19,15 @@ def ingest_documents():
     # 4. Store chunks + embeddings in PostgreSQL
     vector_store = VectorStore()
 
+    vector_store.create_tables()
     vector_store.clear()
 
     for chunk, vector in zip(chunks, vectors):
         vector_store.add_chunk(
-        content=chunk.page_content,
-        metadata=chunk.metadata,
-        embedding=vector,
-    )
+            content=chunk.page_content,
+            metadata=chunk.metadata,
+            embedding=vector,
+        )
 
     return len(chunks)
 
